@@ -25,14 +25,9 @@ class LoadQA:
         combined_df = pd.concat(
             [pd.read_csv(file) for file in all_csv_files], ignore_index=True
         )
-        print(f"Load QA data：{len(combined_df)}")
+        print(f"Load QA data total ：{len(combined_df)}")
 
         self.data = combined_df
 
     def get_all_qa_pairs(self) -> List[Dict[str, str]]:
         return self.data[["department", "title", "ask", "answer"]].to_dict("records")
-
-
-if __name__ == "__main__":
-    Q = LoadQA()
-    qa_pairs = Q.get_all_qa_pairs()
