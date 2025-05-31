@@ -99,12 +99,3 @@ class HybridRetriver:
         for res in results:
             res[f"{key}_normalized"] = (res[key] - min_score) / range_score
 
-
-from load_data import LoadQA
-
-qa = LoadQA().get_all_qa_pairs()
-
-h = HybridRetriver()
-h.faiss_retriver.qa_pairs = qa
-r = h.hybrid_search("得了阳痿怎么办")
-print(r)

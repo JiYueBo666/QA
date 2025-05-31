@@ -73,7 +73,7 @@ async def get_answer(query: Query):
         
     loop = asyncio.get_event_loop()
     # 使用线程池执行同步方法，避免阻塞事件循环
-    results = await loop.run_in_executor(None, retriever.search, query.query)
+    results = await loop.run_in_executor(None, retriever.hybrid_search, query.query)
 
     return [
         Answer(

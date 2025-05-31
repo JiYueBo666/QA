@@ -94,12 +94,12 @@ class ElasticRetriver:
 
 #     es = ElasticRetriver()
 
-#     # 只创建一次索引（如果不存在）
-#     # es.create_index()
+    # #只创建一次索引（如果不存在）
+    # es.create_index()
 
-#     # es.index_qa_pairs(qa_pairs)
+    # es.index_qa_pairs(qa_pairs)
 
-#     # 搜索测试
-#     results = es.search("阳痿怎么办")
-#     print(results)
-#     print(type(results))
+    # # 搜索测试
+    # results = es.search("阳痿怎么办")
+    # print(results)
+    # print(type(results))
