@@ -3,7 +3,7 @@ from typing import List, Dict
 
 # from QA.config import MEDICAL_DATASET_DIR, TEST_NUM
 import os
-import logg,ing
+import logging
 from glob import glob
 
 
