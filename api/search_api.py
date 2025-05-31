@@ -28,9 +28,22 @@ app = FastAPI(
     version="1.0.0",
 )
 
-retriever = HybridRetriver()
-qa_pairs = LoadQA().get_all_qa_pairs()
-retriever.faiss_retriver.qa_pairs = qa_pairs
+# 将全局变量初始化移到函数中
+retriever = None
+qa_pairs = None
+
+def init_resources():
+    global retriever, qa_pairs
+    if retriever is None:
+        logger.info("初始化资源...")
+        retriever = HybridRetriver()
+        qa_pairs = LoadQA().get_all_qa_pairs()
+        retriever.faiss_retriver.qa_pairs = qa_pairs
+        logger.info("资源初始化完成")
+
+@app.on_event("startup")
+async def startup_event():
+    init_resources()
 
 
 class Query(BaseModel):
@@ -48,32 +61,16 @@ class Answer(BaseModel):
     final_score: float
 
 
-@app.post("/api/qa", response_model=List[Answer])
-async def get_answer(query: Query):
-    """
-    Main-API: get_answer
-    """
-    results = retriever.search(query.question)
-    return [
-        Answer(
-            title=res.get("title", ""),
-            ask=res.get("ask", ""),
-            answer=res.get("answer", ""),
-            vector_score=res.get("vector_score", 0.0),
-            vector_normalized_score=res.get("vector_normalized_score", 0.0),
-            text_score=res.get("text_score", 0.0),
-            text_normalized_score=res.get("text_normalized_score", 0.0),
-            final_score=res.get("final_score", 0.0),
-        )
-        for res in results
-    ]
-
-
+# 删除第一个实现，只保留第二个异步实现
 @app.post("/api/qa", response_model=List[Answer])
 async def get_answer(query: Query):
     """
     Main-API: get_answer (async)
     """
+    global retriever
+    if retriever is None:
+        init_resources()
+        
     loop = asyncio.get_event_loop()
     # 使用线程池执行同步方法，避免阻塞事件循环
     results = await loop.run_in_executor(None, retriever.search, query.query)
