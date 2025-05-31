@@ -44,7 +44,6 @@ class EmbeddingModel:
             logger.error(f"加载模型失败: {e}")
             raise e  # 或者根据需求设为None等处理方式
 
-
     def mean_pooling(self, model_output, attention_mask):
         token_embeddings = model_output[0]
         input_mask_expanded = (
@@ -54,10 +53,8 @@ class EmbeddingModel:
             input_mask_expanded.sum(1), min=1e-9
         )
 
-
     def cls_pooling(self, model_output):
         return model_output[0][:, 0]
-
 
     def embed_query(self, text):
         try:
@@ -146,12 +143,12 @@ class FaissRetriver:
 
         # 创建CPU版本的索引，减少子量化器数量
         index = faiss.IndexIVFPQ(quantizer, VECTOR_DIM, 500, 32, 8)  # 从64减少到32
-        
+
         # 如果有GPU可用，将索引转移到GPU
         if self.use_gpu:
             # 修改GPU选项，启用float16查找表以减少内存使用
             self.gpu_options.useFloat16LookupTables = True
-            
+
             # 将索引转移到GPU，传入GPU选项
             index = faiss.index_cpu_to_gpu(self.res, 0, index, self.gpu_options)
             logger.info("索引已转移到GPU，使用float16查找表和减少的子量化器")
@@ -187,7 +184,6 @@ class FaissRetriver:
         query_vector = np.array([query_vector]).astype("float32")
         distances, indices = self.index.search(query_vector, k)
 
-
         logger.info(f"qa pairs number : [{len(self.qa_pairs)}]")
         results = []
         for i, idx in enumerate(indices[0]):
@@ -221,7 +217,7 @@ class FaissRetriver:
         """
         # 先加载到CPU
         cpu_index = faiss.read_index(filepath)
-        
+
         # 如果有GPU可用，将索引转移到GPU
         if self.use_gpu:
             self.index = faiss.index_cpu_to_gpu(self.res, 0, cpu_index)
@@ -235,12 +231,13 @@ if __name__ == "__main__":
     data = LoadQA().get_all_qa_pairs()
 
     fais = FaissRetriver()
-    vectors = fais.get_vectors(data)
-    fais.build_index(vectors, data)
-    fais.save_index()
+    # vectors = fais.get_vectors(data)
+    # fais.build_index(vectors, data)
+    # fais.save_index()
 
-    # fais.load_index("./faiss")
-    # fais.qa_pairs=data
-    # vec=fais.embed_model.embed_query("我有点阳痿，感觉人生完了")
-    # r=fais.search(vec)
-    # print(r)
+    fais.load_index("./faiss")
+    fais.qa_pairs = data
+    vec = fais.embed_model.embed_query("我有点阳痿，感觉人生完了")
+    r = fais.search(vec)
+    print(r)
+    print(type(r))
