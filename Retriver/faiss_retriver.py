@@ -33,12 +33,17 @@ class EmbeddingModel:
     def __init__(self, default_path="./huggingface/encoder"):
         self.default_path = default_path
         self.download_from_hf()
+        # 检查是否有可用的GPU
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         try:
             self.tokenizer = AutoTokenizer.from_pretrained(default_path)
-            self.model = AutoModel.from_pretrained(default_path)
+            # 将模型加载到GPU
+            self.model = AutoModel.from_pretrained(default_path).to(self.device)
+            logger.info(f"模型已加载到设备: {self.device}")
         except Exception as e:
             logger.error(f"加载模型失败: {e}")
             raise e  # 或者根据需求设为None等处理方式
+
 
     def mean_pooling(self, model_output, attention_mask):
         token_embeddings = model_output[0]
@@ -49,8 +54,10 @@ class EmbeddingModel:
             input_mask_expanded.sum(1), min=1e-9
         )
 
+
     def cls_pooling(self, model_output):
         return model_output[0][:, 0]
+
 
     def embed_query(self, text):
         try:
@@ -59,8 +66,12 @@ class EmbeddingModel:
                 inputs = self.tokenizer(
                     text, padding=True, truncation=True, return_tensors="pt"
                 )
+                # 将输入数据移动到GPU
+                inputs = {k: v.to(self.device) for k, v in inputs.items()}
                 model_output = self.model(**inputs)
                 embeds = self.cls_pooling(model_output).squeeze()
+                # 将结果移回CPU进行后续处理
+                embeds = embeds.cpu()
                 embeds = (
                     torch.nn.functional.normalize(embeds, p=2, dim=0).numpy().tolist()
                 )
@@ -100,7 +111,17 @@ class FaissRetriver:
         self.qa_pairs = []
         self.embed_model = EmbeddingModel()
         self.vectors = None
-        self._create_index()
+        # 检查是否有可用的GPU
+        self.use_gpu = torch.cuda.is_available()
+        if self.use_gpu:
+            logger.info(f"使用GPU: {torch.cuda.get_device_name(0)}")
+            # 初始化GPU资源
+            self.res = faiss.StandardGpuResources()
+            # 配置GPU选项
+            self.gpu_options = faiss.GpuClonerOptions()
+            self.gpu_options.useFloat16 = True  # 使用半精度浮点数以提高性能
+        else:
+            logger.info("未检测到GPU，将使用CPU模式")
 
     def get_vectors(self, qa_pairs):
         texts = [qa_pair.get("title", "") for qa_pair in qa_pairs]
@@ -116,13 +137,24 @@ class FaissRetriver:
 
         logger.info(f"Processed {len(texts)} items.")
         self.vectors = all_vectors
+        return all_vectors
 
-    def _create_index(self):
+    def _create_index(self, vectors=None):
         VECTOR_DIM = int(os.environ["EMBED_DIM"])
         print(VECTOR_DIM)
         quantizer = faiss.IndexFlatL2(VECTOR_DIM)
 
-        index = faiss.IndexIVFPQ(quantizer, VECTOR_DIM, 500, 64, 8)
+        # 创建CPU版本的索引，减少子量化器数量
+        index = faiss.IndexIVFPQ(quantizer, VECTOR_DIM, 500, 32, 8)  # 从64减少到32
+        
+        # 如果有GPU可用，将索引转移到GPU
+        if self.use_gpu:
+            # 修改GPU选项，启用float16查找表以减少内存使用
+            self.gpu_options.useFloat16LookupTables = True
+            
+            # 将索引转移到GPU，传入GPU选项
+            index = faiss.index_cpu_to_gpu(self.res, 0, index, self.gpu_options)
+            logger.info("索引已转移到GPU，使用float16查找表和减少的子量化器")
 
         return index
 
@@ -133,7 +165,7 @@ class FaissRetriver:
         self.qa_pairs = qa_pairs
         vectors = np.array(vectors).astype("float32")
 
-        self.index = self._create_index(vectors)
+        self.index = self._create_index()
 
         if not self.index.is_trained:
             print("[Faiss] Training index...")
@@ -155,6 +187,8 @@ class FaissRetriver:
         query_vector = np.array([query_vector]).astype("float32")
         distances, indices = self.index.search(query_vector, k)
 
+
+        logger.info(f"qa pairs number : [{len(self.qa_pairs)}]")
         results = []
         for i, idx in enumerate(indices[0]):
             if idx != -1:
@@ -173,15 +207,28 @@ class FaissRetriver:
         Save FAISS index to a file.
         """
         if self.index is not None:
-            faiss.write_index(self.index, filepath)
+            # 如果是GPU索引，需要先转回CPU
+            if self.use_gpu:
+                cpu_index = faiss.index_gpu_to_cpu(self.index)
+                faiss.write_index(cpu_index, filepath)
+            else:
+                faiss.write_index(self.index, filepath)
             logger.info(f"[Faiss] Index saved to {filepath}")
 
     def load_index(self, filepath):
         """
         Load FAISS index from a file.
         """
-        self.index = faiss.read_index(filepath)
-        logger.info(f"[Faiss] Index loaded from {filepath}")
+        # 先加载到CPU
+        cpu_index = faiss.read_index(filepath)
+        
+        # 如果有GPU可用，将索引转移到GPU
+        if self.use_gpu:
+            self.index = faiss.index_cpu_to_gpu(self.res, 0, cpu_index)
+            logger.info(f"[Faiss] Index loaded from {filepath} to GPU")
+        else:
+            self.index = cpu_index
+            logger.info(f"[Faiss] Index loaded from {filepath} to CPU")
 
 
 if __name__ == "__main__":
@@ -191,3 +238,9 @@ if __name__ == "__main__":
     vectors = fais.get_vectors(data)
     fais.build_index(vectors, data)
     fais.save_index()
+
+    # fais.load_index("./faiss")
+    # fais.qa_pairs=data
+    # vec=fais.embed_model.embed_query("我有点阳痿，感觉人生完了")
+    # r=fais.search(vec)
+    # print(r)
