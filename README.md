@@ -4,7 +4,7 @@
 
 
 
-![demo](demo.png.png)
+![demo](demo.png)
 
 
 ## 系统架构
