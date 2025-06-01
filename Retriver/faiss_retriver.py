@@ -237,7 +237,7 @@ if __name__ == "__main__":
 
     fais.load_index("./faiss")
     fais.qa_pairs = data
-    vec = fais.embed_model.embed_query("我有点阳痿，感觉人生完了")
+    vec = fais.embed_model.embed_query("得了艾滋病感觉人生完了")
     r = fais.search(vec)
     print(r)
     print(type(r))
