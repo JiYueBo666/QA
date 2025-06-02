@@ -4,7 +4,7 @@
 
 
 
-![demo](demo.png)
+![demo](demo.gif)
 
 
 ## 系统架构
