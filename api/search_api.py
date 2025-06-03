@@ -32,6 +32,7 @@ app = FastAPI(
 retriever = None
 qa_pairs = None
 
+
 def init_resources():
     global retriever, qa_pairs
     if retriever is None:
@@ -41,8 +42,10 @@ def init_resources():
         retriever.faiss_retriver.qa_pairs = qa_pairs
         logger.info("资源初始化完成")
 
+
 @app.on_event("startup")
 async def startup_event():
+    logger.info("应用启动，初始化资源...")
     init_resources()
 
 
@@ -70,7 +73,7 @@ async def get_answer(query: Query):
     global retriever
     if retriever is None:
         init_resources()
-        
+
     loop = asyncio.get_event_loop()
     # 使用线程池执行同步方法，避免阻塞事件循环
     results = await loop.run_in_executor(None, retriever.hybrid_search, query.query)

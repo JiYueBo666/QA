@@ -227,17 +227,17 @@ class FaissRetriver:
             logger.info(f"[Faiss] Index loaded from {filepath} to CPU")
 
 
-if __name__ == "__main__":
-    data = LoadQA().get_all_qa_pairs()
+# if __name__ == "__main__":
+#     data = LoadQA().get_all_qa_pairs()
 
-    fais = FaissRetriver()
+#     fais = FaissRetriver()
     # vectors = fais.get_vectors(data)
     # fais.build_index(vectors, data)
     # fais.save_index()
 
-    fais.load_index("./faiss")
-    fais.qa_pairs = data
-    vec = fais.embed_model.embed_query("得了艾滋病感觉人生完了")
-    r = fais.search(vec)
-    print(r)
-    print(type(r))
+    # fais.load_index("./faiss")
+    # fais.qa_pairs = data
+    # vec = fais.embed_model.embed_query("得了艾滋病感觉人生完了")
+    # r = fais.search(vec)
+    # print(r)
+    # print(type(r))
