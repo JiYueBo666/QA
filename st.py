@@ -24,14 +24,6 @@ st.markdown(
         flex-direction: row-reverse;
         text-align: right;
     }
-    /* 添加聊天容器的边框样式 */
-    .chat-container {
-        border: 1px solid #ddd;
-        border-radius: 10px;
-        padding: 20px;
-        margin: 10px 0;
-        background-color: #f8f9fa;
-    }
 </style>
 """,
     unsafe_allow_html=True,
@@ -103,7 +95,7 @@ with st.container():
                 ai_assistant.update(
                     label="回复生成完成",
                     state="complete",
-                    expanded=True,
+                    expanded=False,
                 )
 
             def stream_output():
