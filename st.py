@@ -15,6 +15,8 @@ st.title("混合检索问答系统")
 
 st.write("Streamlit version", st.__version__)
 
+
+# 这段markdown让消息分左右显示
 st.markdown(
     """
 <style>
